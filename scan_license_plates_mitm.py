@@ -1,6 +1,28 @@
 from bs4 import BeautifulSoup
 from requests import Request, Session
 import re
+import sys
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--letters', help='letter combination. Use ? for wildcard')
+parser.add_argument('--numbers', help='number combination. Use ? for wildcard')
+args = parser.parse_args()
+
+numbers = args.numbers
+letters = args.letters
+
+if (not numbers and not letters):
+    print('Mandatory parameters not set. See --help')
+    sys.exit(1)
+
+if (len(numbers) > 3):
+    print('Only 3 Digits as numbers allowed')
+    sys.exit(1)
+
+if (len(letters) > 3):
+    print('Only 2 letters as letters allowed')
+    sys.exit(1)
 
 # use mitm proxy
 http_proxy  = "127.0.0.1:8080"
@@ -41,11 +63,11 @@ timestamp = soup.find('input', {'name': 'ZEITSTEMPEL'}).get('value')
 data="""-----------------------------21656587021738608004592965003
 Content-Disposition: form-data; name="WKZ_ERKENN_Z"
 
-GO
+{{letters}}
 -----------------------------21656587021738608004592965003
 Content-Disposition: form-data; name="WKZ_ZIFFERN"
 
-9??
+{{numbers}}
 -----------------------------21656587021738608004592965003
 Content-Disposition: form-data; name="WKZ_SUCHMERKMAL"
 
@@ -60,7 +82,7 @@ Content-Disposition: form-data; name="ZEITSTEMPEL"
 {{timestamp}}
 -----------------------------21656587021738608004592965003--"""
 
-data = data.replace("{{timestamp}}", timestamp)
+data = data.replace('{{timestamp}}', timestamp).replace('{{numbers}}', numbers).replace('{{letters}}', letters)
 
 postReq = Request(
     'POST', 
@@ -118,7 +140,7 @@ if (len(span) > 0):
 
 selected = soup.findAll('div', id=re.compile(r"^OPT_KENNZEICHENSUCHE_TREFFER\d+"))
 
-print(f'Found {len(selected)} Results:')
+print(f'Found {len(selected)} Results for S-{letters} {numbers}:')
 print('-------------------------------------------------------------------')
 
 # Check amount of found Results

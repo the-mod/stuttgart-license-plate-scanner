@@ -1,6 +1,28 @@
 from bs4 import BeautifulSoup
 from requests import Request, Session
 import re
+import sys
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--letters', help='letter combination. Use ? for wildcard. Max length 2 letters')
+parser.add_argument('--numbers', help='number combination. Use ? for wildcard. Max length 3 digits')
+args = parser.parse_args()
+
+numbers = args.numbers
+letters = args.letters
+
+if (not numbers and not letters):
+    print('Mandatory parameters not set. See --help')
+    sys.exit(1)
+
+if (len(numbers) > 3):
+    print('Only 3 Digits as numbers allowed')
+    sys.exit(1)
+
+if (len(letters) > 3):
+    print('Only 2 letters as letters allowed')
+    sys.exit(1)
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -29,8 +51,8 @@ soup = BeautifulSoup(getResponse.text , 'html.parser')
 timestamp = soup.find('input', {'name': 'ZEITSTEMPEL'}).get('value')
 
 data = {
-    "WKZ_ERKENN_Z": "GO",
-    "WKZ_ZIFFERN": "9??",
+    "WKZ_ERKENN_Z": letters,
+    "WKZ_ZIFFERN": numbers,
     "WKZ_SUCHMERKMAL": "NULL",
     "BTN_WKZSUCHE": "suchen",
     "ZEITSTEMPEL": timestamp
@@ -98,7 +120,7 @@ if (len(span) > 0):
 
 selected = soup.findAll('div', id=re.compile(r"^OPT_KENNZEICHENSUCHE_TREFFER\d+"))
 
-print(f'Found {len(selected)} Results:')
+print(f'Found {len(selected)} Results for S-{letters} {numbers}:')
 print('-------------------------------------------------------------------')
 
 # Check amount of found Results
