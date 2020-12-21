@@ -76,7 +76,7 @@ postReq = Request(
 #print(postReq.headers)
 #print(postReq.body.decode('utf-8'))
 
-# send post request using mitm
+# send post request
 postRes = s.send(postReq)
 
 soup = BeautifulSoup(postRes.text , 'html.parser')
