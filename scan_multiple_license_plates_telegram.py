@@ -122,9 +122,9 @@ def getPlates(session, cookies, timestamp, letters, numbers):
 
         resultString = ''
         if (len(foundResults) == 0):
-            resultString=f'\U0000274c Found {len(foundResults)} Results for S-{letters} {numbers}'
+            resultString=f'\U0000274E Found {len(foundResults)} Results for S-{letters} {numbers}'
         else:
-            resultString=f'\U00002714 Found {len(foundResults)} Results for S-{letters} {numbers}:\n'
+            resultString=f'\U00002705 Found {len(foundResults)} Results for S-{letters} {numbers}:\n'
 
             paginationMessage = getPaginationMessage(soup)
             if (paginationMessage != None):
