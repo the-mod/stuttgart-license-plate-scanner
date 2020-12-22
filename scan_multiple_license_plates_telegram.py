@@ -120,22 +120,22 @@ def getPlates(session, cookies, timestamp, letters, numbers):
 
         foundResults = soup.findAll('div', id=re.compile(r"^OPT_KENNZEICHENSUCHE_TREFFER\d+"))
 
-        result = ''
+        resultString = ''
         if (len(foundResults) == 0):
-            result=f'\U0000274c Found {len(foundResults)} Results for S-{letters} {numbers}'
+            resultString=f'\U0000274c Found {len(foundResults)} Results for S-{letters} {numbers}'
         else:
-            result=f'\U00002714 Found {len(foundResults)} Results for S-{letters} {numbers}:\n'
+            resultString=f'\U00002714 Found {len(foundResults)} Results for S-{letters} {numbers}:\n'
 
             paginationMessage = getPaginationMessage(soup)
             if (paginationMessage != None):
-                 result = result + f'\U000026A0 Warning. More Entries than shown: {paginationMessage}\n'
+                 resultString = resultString + f'\U000026A0 Warning. More Entries than shown: {paginationMessage}\n'
 
             sanitized = map(lambda entry: entry.get_text(strip=True), foundResults) 
-            result = resultDelimeter.join(sanitized)
-
+            resultsJoined = resultDelimeter.join(sanitized)
+            resultString = resultString + '\n' + resultsJoined
         # return timestamp needed for further requests
         timestamp = soup.find('input', {'name': 'ZEITSTEMPEL'}).get('value')
-        return result, timestamp
+        return resultString, timestamp
     except Timeout:
         errorMessage = f'\U000026D4 Error retrieving License Plates for combination {letters}{numbers}. Timeout'
         return errorMessage, None
@@ -178,7 +178,7 @@ def scanCombinations(combinations):
             results[combination] = '\U000026D4 Invalid combination'
             #print(f'Skip invalid combination {combination}')
 
-    resultsString = lineDelimeter.join([f'{key}:: {value}' for key, value in results.items()])
+    resultsString = lineDelimeter.join([f'{key} -> {value}' for key, value in results.items()])
     return resultsString
 
 def getCurrentBerlinTimestamp():
