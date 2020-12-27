@@ -46,17 +46,23 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gec
     'TE': 'Trailers'
 }
 
-def validNumbers(numbers):
-    # TODO check for only numbers or wildcard
-    if (len(numbers) > 3):
-        return False
-    return True
+# TODO cover the case one letter with 4 digits
 
-def validLetters(letters):
-    # TODO check for only letters or wildcard
-    if (len(letters) > 3):
+# only 1-3 numbers and ? allowed
+def validNumbers(numbers):
+    match = re.match('^[\d?]{2,4}$', numbers)
+    if match:
+        return True
+    else:
         return False
-    return True
+
+# only 1-2 letters and ? allowed
+def validLetters(letters):   
+    match = re.match('^[a-zA-Z?]{1,2}$', letters)
+    if match:
+        return True
+    else:
+        return False
 
 def getPaginationMessage(soup):
     span = soup.select(".blaettern span")
@@ -231,6 +237,7 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler("butterfly", image))
     dispatcher.add_handler(CommandHandler("help", help_command))
     updater.start_polling()
+    
     try:
         loop()
     except KeyboardInterrupt:
