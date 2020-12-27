@@ -46,9 +46,8 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gec
     'TE': 'Trailers'
 }
 
-# TODO cover the case one letter with 4 digits
-
-# only 1-3 numbers and ? allowed
+# TODO cover case, 1 letter only allowed with 4 digits, so no 2 or 3 digits when only 1 letter
+# only 1-4 numbers and ? allowed
 def validNumbers(numbers):
     match = re.match('^[\d?]{2,4}$', numbers)
     if match:
