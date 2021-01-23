@@ -7,7 +7,8 @@ If you wish to get Notifications also Scripts to send the results to telegram ar
 ## Basic Setup
 * Install Python 3.6+ (due to f-Strings)
 * Install `bs4` e.g. via `pip install bs4`
-* Intall `requests` e.g. via `pip install requests`
+* Install `requests` e.g. via `pip install requests`
+* Install `python-telegram-bot` e.g. via `pip install python-telegram-bot`
 
 ## Usage of plain
 `scan_license_plates.py` is a basic example. It needs no further dependencies as the basic Setup.

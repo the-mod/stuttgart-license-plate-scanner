@@ -21,7 +21,8 @@ args = parser.parse_args()
 combinations = args.combination
 timestamps = args.timestamps
 token = args.telegram_bot_token
-chatId = args.telegram_chat_id
+targetChatId = args.telegram_chat_id
+retryTimestamps = []
 
 if (not combinations or not timestamps or not token or not chatId):
     print('Mandatory parameters not set. See --help')
@@ -33,6 +34,8 @@ lineDelimeter = '\n\n'
 resultDelimeter = '|'
 bot = telegram.Bot(token=token)
 tz = pytz.timezone('Europe/Berlin')
+
+updater=None
 
 # TODO make user agent random out of preconfigured set of user agents
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0',
@@ -83,9 +86,15 @@ def getCookiesAndTimestamp(session):
 
         # Also save timestamp from first request. It seams with a other timestamp server is rejecting post request
         soup = BeautifulSoup(res.text , 'html.parser')
-        timestamp = soup.find('input', {'name': 'ZEITSTEMPEL'}).get('value')
+        timestampField = soup.find('input', {'name': 'ZEITSTEMPEL'})
 
-        return cookies, timestamp, None
+        if timestampField != None:
+            timestamp = timestampField.get('value')
+            return cookies, timestamp, None
+        else:
+            errorMessage = f'\U000026D4 Error getting timestamp of request'
+            return None, None, errorMessage
+
     except Timeout:
         errorMessage = f'\U000026D4 Error retrieving cookie. Timeout'
         return None, None, errorMessage
@@ -148,12 +157,17 @@ def getPlates(session, cookies, timestamp, letters, numbers):
         errorMessage = f'\U000026D4 Error retrieving License Plates for combination {letters}{numbers}. ConnectionError'
         return errorMessage, None
 
-def sendMessageToTelegram(message):
-    bot.sendMessage(chat_id=chatId, text=message)
+def sendMessageToGroupChat(message):
+    try:
+        bot.sendMessage(chat_id=targetChatId, text=message)
+        return True
+    except:
+        print('Error sending message to bot')
+        return False
 
-def sendImageToTelegram(path):
+def sendImageToChat(givenChatId, path, message):
     photo=open(path, 'rb')
-    bot.sendPhoto(chat_id=chatId, photo=photo, caption='Enjoy')
+    bot.sendPhoto(chat_id=givenChatId, photo=photo, caption=message)
 
 def scanCombinations(combinations):
     #print(f'Scanning combinations {combinations}')
@@ -186,28 +200,29 @@ def scanCombinations(combinations):
     resultsString = lineDelimeter.join([f'{key} -> {value}' for key, value in results.items()])
     return resultsString
 
-def getCurrentBerlinTimestamp():
+def getBerlinTimestampString(minutesOffset=0):
     berlin_now = datetime.now(tz)
+    if (minutesOffset > 0):
+        berlin_now = berlin_now.timedelta(minutes=minutesOffset)
     return berlin_now.strftime('%H:%M:%S')
 
 def shouldFire():
-    currentTime = getCurrentBerlinTimestamp()
+    currentTime = getBerlinTimestampString()
     if currentTime in timestamps:
+        return True
+    if currentTime in retryTimestamps:
         return True
     return False
 
-def loop(): 
-    while(True):
-        if (shouldFire()):
-            results = scanCombinations(combinations)
-            sendMessageToTelegram(results)
-        time.sleep(1)
-
 def scanAll(update: telegram.Update, context: CallbackContext) -> None:
+    user = update.message.from_user
+    print(f'Recevied scanAll command from user {user}')
     resultMessage = scanCombinations(combinations)
     update.message.reply_text(resultMessage)
 
 def scan(update: telegram.Update, context: CallbackContext) -> None:
+    user = update.message.from_user
+    print(f'Recevied scan command from user {user}')
     entries = context.args
     if (entries != None and len(entries) > 0):
         resultMessage = scanCombinations(entries)
@@ -221,14 +236,20 @@ def getRandomImage():
     return files[entry]
 
 def image(update: telegram.Update, context: CallbackContext) -> None:
+    user = update.message.from_user
+    chatId = update.message.chat.id
+    print(f'Recevied butterfly command from user {user}')
     path = getRandomImage()
-    sendImageToTelegram(path)
+    message = f'Enjoy {user.first_name}'
+    sendImageToChat(chatId, path, message)
+    #update.message.reply_photo
 
 def help_command(update: telegram.Update, context: CallbackContext) -> None:
+    print('Recevied help command')
     update.message.reply_text('\U000026A0 Usage: \U000026A0\n /scanAll to trigger a run of the configured license plates\n /scan <Combination> to trigger a search of the given combination\n /butterfly: to show some nice stuff')
 
-if __name__ == '__main__':
-    print(f'Service will query combinations {combinations} at following times {timestamps} in Timezone {tz}')
+def initUpdater():
+    global updater
     updater = Updater(token, use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("scanAll", scanAll))
@@ -236,8 +257,30 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler("butterfly", image))
     dispatcher.add_handler(CommandHandler("help", help_command))
     updater.start_polling()
+
+def loop():
+    global retryTimestamps
+    while(True):
+        if (shouldFire()):
+            results = scanCombinations(combinations)
+            success = sendMessageToGroupChat(results)
+            # checking the result
+            if success:
+                print('successfully send combination scan to telegram')
+                retryTimestamps = []
+            else:
+                # schedule a new execution
+                retryTime = getBerlinTimestampString(5)
+                print(f'error while sending scheduled scanAll. Scheduling next execution at {retryTime}')
+                retryTimestamps.append(retryTime)
+        time.sleep(1)
+
+if __name__ == '__main__':
+    print(f'Service will query combinations {combinations} at following times {timestamps} in Timezone {tz} and send results to chatId {targetChatId}')
+    initUpdater()
     
     try:
+        print('Starting scheduling...')
         loop()
     except KeyboardInterrupt:
         print(sys.stderr, 'Exit by User')
