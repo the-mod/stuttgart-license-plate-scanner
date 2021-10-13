@@ -21,7 +21,7 @@ args = parser.parse_args()
 combinations = args.combination
 timestamps = args.timestamps
 token = args.telegram_bot_token
-targetChatId = args.telegram_chat_id
+chatId = args.telegram_chat_id
 retryTimestamps = []
 
 if (not combinations or not timestamps or not token or not chatId):
@@ -148,8 +148,11 @@ def getPlates(session, cookies, timestamp, letters, numbers):
             resultsJoined = resultDelimeter.join(sanitized)
             resultString = resultString + '\n' + resultsJoined
         # return timestamp needed for further requests
-        timestamp = soup.find('input', {'name': 'ZEITSTEMPEL'}).get('value')
-        return resultString, timestamp
+        timestampField = soup.find('input', {'name': 'ZEITSTEMPEL'})
+        if timestampField is None:
+            errorMessage = f'\U000026D4 Error retrieving License Plates for combination {letters}{numbers}. Parsing Error'
+            return errorMessage, None
+        return resultString, timestampField.get('value')
     except Timeout:
         errorMessage = f'\U000026D4 Error retrieving License Plates for combination {letters}{numbers}. Timeout'
         return errorMessage, None
@@ -157,15 +160,15 @@ def getPlates(session, cookies, timestamp, letters, numbers):
         errorMessage = f'\U000026D4 Error retrieving License Plates for combination {letters}{numbers}. ConnectionError'
         return errorMessage, None
 
-def sendMessageToGroupChat(message):
+def sendMessageToTelegram(message):
     try:
-        bot.sendMessage(chat_id=targetChatId, text=message)
+        bot.sendMessage(chat_id=chatId, text=message)
         return True
     except:
         print('Error sending message to bot')
         return False
 
-def sendImageToChat(givenChatId, path, message):
+def sendImageToTelegram(givenChatId, path, message):
     photo=open(path, 'rb')
     bot.sendPhoto(chat_id=givenChatId, photo=photo, caption=message)
 
@@ -241,7 +244,7 @@ def image(update: telegram.Update, context: CallbackContext) -> None:
     print(f'Recevied butterfly command from user {user}')
     path = getRandomImage()
     message = f'Enjoy {user.first_name}'
-    sendImageToChat(chatId, path, message)
+    sendImageToTelegram(chatId, path, message)
     #update.message.reply_photo
 
 def help_command(update: telegram.Update, context: CallbackContext) -> None:
@@ -263,7 +266,7 @@ def loop():
     while(True):
         if (shouldFire()):
             results = scanCombinations(combinations)
-            success = sendMessageToGroupChat(results)
+            success = sendMessageToTelegram(results)
             # checking the result
             if success:
                 print('successfully send combination scan to telegram')
@@ -276,7 +279,7 @@ def loop():
         time.sleep(1)
 
 if __name__ == '__main__':
-    print(f'Service will query combinations {combinations} at following times {timestamps} in Timezone {tz} and send results to chatId {targetChatId}')
+    print(f'Service will query combinations {combinations} at following times {timestamps} in Timezone {tz}')
     initUpdater()
     
     try:
