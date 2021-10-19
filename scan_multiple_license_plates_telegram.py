@@ -7,7 +7,7 @@ import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import time
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 import glob
 from random import randrange
 
@@ -206,7 +206,7 @@ def scanCombinations(combinations):
 def getBerlinTimestampString(minutesOffset=0):
     berlin_now = datetime.now(tz)
     if (minutesOffset > 0):
-        berlin_now = berlin_now.timedelta(minutes=minutesOffset)
+        berlin_now = berlin_now + timedelta(minutes=minutesOffset)
     return berlin_now.strftime('%H:%M:%S')
 
 def shouldFire():
