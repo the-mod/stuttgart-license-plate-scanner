@@ -8,6 +8,7 @@ If you wish to get Notifications also Scripts to send the results to telegram ar
 * Install Python 3.6+ (due to f-Strings)
 * Install `bs4` e.g. via `pip install bs4`
 * Install `requests` e.g. via `pip install requests`
+* Install `pytz` e.g. via `pip install pytz`
 * Install `python-telegram-bot` e.g. via `pip install python-telegram-bot`
 
 ## Usage of plain
@@ -50,3 +51,7 @@ To scan S:GO-9?? and get a message run `python scan_license_plates_telegram.py -
 * `/scanAll` trigger search for configured combinations
 * `/scan <combination>` trigger search for given combination (<letters>:<numbers>). multiple combinations are possible.
 * `/butterfly` Easteregg, sending some random pictures from the image folder
+
+
+# Docker
+* `docker build --progress=plain --no-cache -t licence .`

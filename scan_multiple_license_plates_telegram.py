@@ -4,7 +4,7 @@ import re
 import sys
 import argparse
 import telegram
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext
 import time
 import pytz
 from datetime import datetime
@@ -20,20 +20,20 @@ args = parser.parse_args()
 
 combinations = args.combination
 timestamps = args.timestamps
-token = args.telegram_bot_token
+telegram_token = args.telegram_bot_token
 chatId = args.telegram_chat_id
 retryTimestamps = []
 
-if (not combinations or not timestamps or not token or not chatId):
+if (not combinations or not timestamps or not telegram_token or not chatId):
     print('Mandatory parameters not set. See --help')
     sys.exit(1)
-
 
 # Constants
 lineDelimeter = '\n\n'
 resultDelimeter = '|'
-bot = telegram.Bot(token=token)
+bot = telegram.Bot(token=telegram_token)
 tz = pytz.timezone('Europe/Berlin')
+telegram_app = Application.builder().token(telegram_token).build()
 
 updater=None
 
@@ -52,7 +52,7 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gec
 # TODO cover case, 1 letter only allowed with 4 digits, so no 2 or 3 digits when only 1 letter
 # only 1-4 numbers and ? allowed
 def validNumbers(numbers):
-    match = re.match('^[\d?]{2,4}$', numbers)
+    match = re.match(r'^[\d?]{2,4}$', numbers)
     if match:
         return True
     else:
@@ -168,9 +168,9 @@ def sendMessageToTelegram(message):
         print('Error sending message to bot')
         return False
 
-def sendImageToTelegram(givenChatId, path, message):
+async def sendImageToTelegram(givenChatId, path, message):
     photo=open(path, 'rb')
-    bot.sendPhoto(chat_id=givenChatId, photo=photo, caption=message)
+    await bot.sendPhoto(chat_id=givenChatId, photo=photo, caption=message)
 
 def scanCombinations(combinations):
     #print(f'Scanning combinations {combinations}')
@@ -217,49 +217,45 @@ def shouldFire():
         return True
     return False
 
-def scanAll(update: telegram.Update, context: CallbackContext) -> None:
+async def scanAll(update: telegram.Update, context: CallbackContext) -> None:
     user = update.message.from_user
     print(f'Recevied scanAll command from user {user}')
     resultMessage = scanCombinations(combinations)
-    update.message.reply_text(resultMessage)
+    await update.message.reply_text(resultMessage)
 
-def scan(update: telegram.Update, context: CallbackContext) -> None:
+async def scan(update: telegram.Update, context: CallbackContext) -> None:
     user = update.message.from_user
     print(f'Recevied scan command from user {user}')
     entries = context.args
     if (entries != None and len(entries) > 0):
         resultMessage = scanCombinations(entries)
-        update.message.reply_text(resultMessage)
+        await update.message.reply_text(resultMessage)
     else:
-        update.message.reply_text('\U000026D4 Please provide combination (<letters>:<numbers>)')
+        await update.message.reply_text('\U000026D4 Please provide combination (<letters>:<numbers>)')
 
-def getRandomImage():
-    files=glob.glob("./images/*.jpg")
+async def getRandomImage():
+    files = glob.glob("./images/*.jpg")
     entry = randrange(len(files))
     return files[entry]
 
-def image(update: telegram.Update, context: CallbackContext) -> None:
+async def get_image(update: telegram.Update, context: CallbackContext) -> None:
     user = update.message.from_user
     chatId = update.message.chat.id
     print(f'Recevied butterfly command from user {user}')
-    path = getRandomImage()
+    path = await getRandomImage()
     message = f'Enjoy {user.first_name}'
-    sendImageToTelegram(chatId, path, message)
-    #update.message.reply_photo
+    await sendImageToTelegram(chatId, path, message)
 
-def help_command(update: telegram.Update, context: CallbackContext) -> None:
+async def help_command(update: telegram.Update, context: CallbackContext) -> None:
     print('Recevied help command')
-    update.message.reply_text('\U000026A0 Usage: \U000026A0\n /scanAll to trigger a run of the configured license plates\n /scan <Combination> to trigger a search of the given combination\n /butterfly: to show some nice stuff')
+    await update.message.reply_text('\U000026A0 Usage: \U000026A0\n /scanAll to trigger a run of the configured license plates\n /scan <Combination> to trigger a search of the given combination\n /butterfly: to show some nice stuff')
 
 def initUpdater():
-    global updater
-    updater = Updater(token, use_context=True)
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("scanAll", scanAll))
-    dispatcher.add_handler(CommandHandler("scan", scan))
-    dispatcher.add_handler(CommandHandler("butterfly", image))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    updater.start_polling()
+    telegram_app.add_handler(CommandHandler("scanAll", scanAll))
+    telegram_app.add_handler(CommandHandler("scan", scan))
+    telegram_app.add_handler(CommandHandler("butterfly", get_image))
+    telegram_app.add_handler(CommandHandler("help", help_command))
+    telegram_app.run_polling()
 
 def loop():
     global retryTimestamps
